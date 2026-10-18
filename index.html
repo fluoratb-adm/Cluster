@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kelola Cluster</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<style>
+:root{--bg:#f6f7f4;--card:#fff;--tx:#1d2420;--mu:#68726b;--ln:#e0e5de;--ac:#2f6f4f;--ac2:#e3f0e8;--on:#fff;--bad:#b3392f;--warn:#a56a00;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#141a16;--card:#1d251f;--tx:#e8ede9;--mu:#9aa69d;--ln:#2e3a31;--ac:#6fc596;--ac2:#243a2d;--on:#10231a;--bad:#ef8a80;--warn:#e5b04d;color-scheme:dark}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.w{max-width:760px;margin:0 auto;padding:14px}h1{font-size:20px;margin:0}h2{font-size:16px;margin:0}.mu{color:var(--mu);font-size:13px}
+.hd{display:flex;align-items:center;gap:12px}.lg{width:54px;height:54px;border-radius:12px;background:var(--ac2);display:flex;align-items:center;justify-content:center;font-size:28px;overflow:hidden;flex:none}.lg img{width:100%;height:100%;object-fit:contain}
+nav{display:flex;gap:6px;overflow-x:auto;padding:12px 0 6px}nav button{flex:none;border:1px solid var(--ln);background:var(--card);color:var(--tx);padding:8px 14px;border-radius:99px;font:inherit;cursor:pointer}nav button.on{background:var(--ac);color:var(--on);border-color:var(--ac)}
+.card{background:var(--card);border:1px solid var(--ln);border-radius:12px;padding:12px 14px;margin:8px 0}.row{display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:8px}.g .card{margin:0}.big{font-size:20px;font-weight:700}
+.hr{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:18px 0 6px}
+.b{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;background:var(--ac2);color:var(--ac);white-space:nowrap}.b.bad{background:rgba(179,57,47,.15);color:var(--bad)}.b.warn{background:rgba(165,106,0,.17);color:var(--warn)}
+.btn{border:0;background:var(--ac);color:var(--on);padding:8px 14px;border-radius:8px;font:inherit;cursor:pointer}.btn.o{background:transparent;color:var(--ac);border:1px solid var(--ac)}.btn.d{color:var(--bad);border-color:var(--bad)}
+input,select,textarea{width:100%;padding:9px 10px;border:1px solid var(--ln);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit;font-size:16px}
+label{display:block;font-size:13px;color:var(--mu);margin:8px 0 0}label input,label select,label textarea{margin-top:3px}
+#m{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;justify-content:center;z-index:20}#m.on{display:flex}
+.sh{background:var(--card);width:100%;max-width:560px;max-height:92%;overflow:auto;border-radius:16px 16px 0 0;padding:16px}
+#t{position:fixed;left:50%;transform:translateX(-50%);bottom:20px;background:var(--tx);color:var(--bg);padding:8px 16px;border-radius:99px;font-size:14px;display:none;z-index:30}
+</style></head><body>
+<div id="auth" class="w" style="display:none;max-width:420px"><div class="card"><h2>Kelola Cluster</h2><div class="mu">Masuk untuk melanjutkan</div>
+<label>Email<input id="em" type="email" autocomplete="username"></label><label>Kata sandi (min. 6 karakter)<input id="pw" type="password" autocomplete="current-password"></label>
+<label>Nama (diisi saat daftar)<input id="nm"></label><p><button class="btn" data-a="li">Masuk</button> <button class="btn o" data-a="su">Daftar</button></p><div class="mu" id="am"></div></div></div>
+<div id="app" class="w" style="display:none">
+<div class="hd"><div class="lg" id="lg">🏘️</div><div style="flex:1;min-width:0"><h1 id="cn"></h1><div class="mu" id="who"></div></div>
+<div><button class="btn o" data-a="cfg" id="cfgb">Atur</button> <button class="btn o" data-a="out">Keluar</button></div></div>
+<nav><button data-t="ringkasan">Ringkasan</button><button data-t="warga">Warga</button><button data-t="ipl">IPL</button><button data-t="keluar">Pengeluaran</button><button data-t="pengurus">Pengurus</button><button data-t="kegiatan">Kegiatan</button><button data-t="user">Pengguna</button></nav>
+<div id="v"></div></div>
+<div id="m"><div class="sh" id="sh"></div></div><div id="t"></div>
+<script>
+const CU='https://ecejglshvcizunbqgcvy.supabase.co',CK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVjZWpnbHNodmNpenVuYnFnY3Z5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIyNTU0NzMsImV4cCI6MjEwNzgzMTQ3M30.X5vunn1f2kBzJaNK4WA4QOiHjATmAt_mGM_zsAvec7I';
+const $=s=>document.querySelector(s),rp=n=>'Rp '+new Intl.NumberFormat('id-ID').format(n||0),rt2=n=>String(n).padStart(2,'0');
+const E=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const today=new Date().toISOString().slice(0,10),ROLE={pending:'Menunggu persetujuan',user:'Hanya lihat',admin:'Admin',superadmin:'Super Admin'};
+const bln=p=>p?new Date(p+'-01T00:00').toLocaleDateString('id-ID',{month:'long',year:'numeric'}):'-';
+const tgl=t=>t?new Date(t+'T00:00').toLocaleDateString('id-ID',{weekday:'short',day:'numeric',month:'short',year:'numeric'}):'-';
+let sb,U,me={},ro=true,tab='ringkasan',q='',per=today.slice(0,7),CFG={nama:'',logo:'',tarif:250000},USERS=[];
+const D={warga:[],ipl:[],keluar:[],pengurus:[],petugas:[],kegiatan:[]},TARIF=()=>+CFG.tarif||250000;
+const JAB=['Ketua RW','Ketua RT','Bendahara','Sekretaris','Seksi','Penasehat'];
+const tot=d=>(+d.tagihan||0)+(+d.denda||0),sisa=d=>tot(d)-(+d.dibayar||0),st=d=>sisa(d)<=0?'Lunas':d.dibayar>0?'Sebagian':'Belum';
+const bd=(t,c)=>'<span class="b '+(c||'')+'">'+E(t)+'</span>',stb=s=>bd(s,s==='Lunas'?'':s==='Sebagian'?'warn':'bad');
+const jb=d=>d.jabatan==='Ketua RT'?'Ketua RT '+rt2(d.rt||0):d.jabatan==='Seksi'?'Seksi '+(d.seksi||''):d.jabatan;
+// field: [kunci,label,tipe,opsi,wajib,tampilJikaJabatan]
+const S={
+warga:{t:'Warga',f:[['nama','Nama Kepala Keluarga','text','',1],['blok','Blok / No. Rumah','text','',1],['hp','No. HP / WA','tel','',1],['rt','RT','number'],['status','Status Hunian','sel',['','Pemilik','Penyewa','Kosong']],['kk','Jumlah Anggota Keluarga','number'],['nik','NIK Kepala Keluarga','text'],['kendaraan','Kendaraan (plat nomor)','text'],['darurat','Kontak Darurat','text']]},
+ipl:{t:'Tagihan IPL',def:()=>({periode:per,tagihan:TARIF(),denda:0,dibayar:0}),f:[['periode','Periode','month','',1],['blok','Blok / No. Rumah','blok','',1],['nama','Nama Warga','text','',1],['tagihan','Tagihan IPL (Rp)','number'],['denda','Denda Keterlambatan (Rp)','number'],['dibayar','Sudah Dibayar (Rp)','number'],['tgl','Tanggal Bayar','date'],['metode','Metode Bayar','sel',['','Transfer','Tunai','QRIS']],['ref','No. Referensi / Bukti','text'],['penerima','Diterima Oleh','text'],['ket','Catatan','text']]},
+keluar:{t:'Pengeluaran',def:()=>({tgl:today}),f:[['tgl','Tanggal','date','',1],['kategori','Kategori','sel',['Gaji Satpam','Kebersihan & Sampah','Listrik PJU','Air & Taman','Perbaikan','Kegiatan','Lainnya'],1],['uraian','Uraian','text','',1],['jumlah','Jumlah (Rp)','number','',1],['ket','Catatan','text']]},
+pengurus:{t:'Pengurus',f:[['jabatan','Jabatan','sel',JAB,1],['rt','No. RT','number','',1,'Ketua RT'],['seksi','Nama Seksi (bebas diisi)','text','',1,'Seksi'],['nama','Nama','text','',1],['blok','Blok / No. Rumah','text'],['hp','No. HP / WA','tel'],['periode','Masa Jabatan','text']]},
+petugas:{t:'Petugas Lingkungan',f:[['tugas','Tugas','sel',['Satpam','Kebersihan','Taman','Teknisi'],1],['nama','Nama','text','',1],['shift','Jadwal / Shift','text'],['hp','No. HP','tel'],['status','Status','sel',['Aktif','Cuti','Nonaktif']],['ket','Catatan','text']]},
+kegiatan:{t:'Kegiatan',def:()=>({tgl:today}),f:[['judul','Nama Kegiatan','text','',1],['kategori','Kategori','sel',['Kerja Bakti','Rapat Warga','Ronda / Jaga','Senam','Arisan','Hari Besar','Lainnya']],['tgl','Tanggal','date','',1],['jam','Jam','time'],['lokasi','Lokasi','text'],['pj','Penanggung Jawab','text'],['ket','Keterangan','area']]}};
+const L={
+warga:d=>[d.nama,[d.blok,d.status,d.kk?d.kk+' orang':'',d.hp].filter(Boolean).join(' • '),''],
+ipl:d=>[d.blok+' – '+d.nama,bln(d.periode)+' • '+rp(tot(d))+(sisa(d)>0?' • sisa '+rp(sisa(d)):''),stb(st(d))],
+keluar:d=>[d.uraian,tgl(d.tgl)+' • '+d.kategori,'<b>'+rp(d.jumlah)+'</b>'],
+pengurus:d=>[d.nama,[d.blok,d.hp,d.periode].filter(Boolean).join(' • '),bd(jb(d))],
+petugas:d=>[d.nama,[d.shift,d.hp,d.status].filter(Boolean).join(' • '),bd(d.tugas)],
+kegiatan:d=>[d.judul,tgl(d.tgl)+(d.jam?' • '+d.jam:'')+(d.lokasi?' • '+d.lokasi:''),bd(d.kategori)]};
+const lst=(n,a)=>a.length?a.map(d=>{const r=L[n](d);return '<div class="card row" data-e="'+n+'|'+d.id+'"><div><b>'+E(r[0])+'</b><div class="mu">'+E(r[1])+'</div></div><div>'+(r[2]||'')+'</div></div>'}).join(''):'<div class="card mu">Belum ada data.</div>';
+const hd=(t,n)=>'<div class="hr"><h2>'+t+'</h2>'+(ro?'':'<button class="btn" data-add="'+n+'">+ Tambah</button>')+'</div>';
+const stat=(l,v,s,c)=>'<div class="card"><div class="mu">'+l+'</div><div class="big" style="'+(c?'color:var(--bad)':'')+'">'+v+'</div><div class="mu">'+(s||'')+'</div></div>';
+const by=(k,r)=>(a,b)=>(r?-1:1)*String(a[k]||'').localeCompare(String(b[k]||''),'id',{numeric:true});
+const sum=(a,f)=>a.reduce((x,d)=>x+(+f(d)||0),0);
+const fw=()=>D.warga.filter(d=>(d.nama+' '+d.blok+' '+(d.hp||'')).toLowerCase().includes(q.toLowerCase()));
+function grp(){const m={};fw().forEach(d=>{const k=d.rt?+d.rt:9999;(m[k]=m[k]||[]).push(d)});
+return Object.keys(m).map(Number).sort((a,b)=>a-b).map(k=>'<div class="hr"><h2>'+(k===9999?'Tanpa RT':'RT '+rt2(k))+'</h2><span class="mu">'+m[k].length+' rumah</span></div>'+lst('warga',m[k].sort(by('blok')))).join('')||lst('warga',[])}
+const V={
+ringkasan:()=>{const p=D.ipl.filter(d=>d.periode===per),tg=sum(p,tot),tr=sum(p,d=>d.dibayar),tk=sum(D.ipl,d=>Math.max(0,sisa(d))),mk=sum(D.ipl,d=>d.dibayar),kl=sum(D.keluar,d=>d.jumlah),nx=D.kegiatan.filter(d=>d.tgl>=today).sort(by('tgl')).slice(0,3);
+return '<div class="g" style="margin-top:8px">'+stat('Rumah terdaftar',D.warga.length)+stat('Total penghuni',sum(D.warga,d=>d.kk))+stat('IPL '+bln(per),tg?Math.round(tr/tg*100)+'% lunas':'-',rp(tr)+' dari '+rp(tg))+stat('Total tunggakan',rp(tk),'Semua periode',tk)+'</div><div style="margin-top:8px">'+stat('Saldo kas',rp(mk-kl),'Masuk '+rp(mk)+' • Keluar '+rp(kl))+'</div><div class="hr"><h2>Kegiatan terdekat</h2></div>'+lst('kegiatan',nx)},
+warga:()=>hd('Data Warga','warga')+'<input id="q" placeholder="Cari nama, blok, atau HP" value="'+E(q)+'"><div id="lst">'+grp()+'</div>',
+ipl:()=>{const p=D.ipl.filter(d=>d.periode===per).sort(by('blok'));
+return hd('Tagihan IPL','ipl')+'<input type="month" id="per" value="'+per+'">'+(ro?'':'<p><button class="btn o" data-a="gen">Buat tagihan semua rumah bulan ini</button></p>')+'<div class="g" style="margin-top:8px">'+stat('Tagihan',rp(sum(p,tot)),p.length+' rumah')+stat('Terkumpul',rp(sum(p,d=>d.dibayar)),p.filter(d=>st(d)==='Lunas').length+' lunas')+'</div>'+lst('ipl',p)},
+keluar:()=>{const mk=sum(D.ipl,d=>d.dibayar),kl=sum(D.keluar,d=>d.jumlah);return hd('Pengeluaran Kas','keluar')+'<div class="g">'+stat('Total pengeluaran',rp(kl))+stat('Saldo kas',rp(mk-kl),'IPL masuk '+rp(mk))+'</div>'+lst('keluar',D.keluar.slice().sort(by('tgl',1)))},
+pengurus:()=>hd('Pengurus','pengurus')+lst('pengurus',D.pengurus.slice().sort((a,b)=>JAB.indexOf(a.jabatan)-JAB.indexOf(b.jabatan)||(+a.rt||0)-(+b.rt||0)))+hd('Petugas Lingkungan','petugas')+lst('petugas',D.petugas),
+kegiatan:()=>{const u=D.kegiatan.filter(d=>d.tgl>=today).sort(by('tgl')),o=D.kegiatan.filter(d=>d.tgl<today).sort(by('tgl',1));return hd('Jadwal Kegiatan','kegiatan')+'<div class="mu">Akan datang</div>'+lst('kegiatan',u)+'<div class="mu" style="margin-top:14px">Sudah lewat</div>'+lst('kegiatan',o)},
+user:()=>'<div class="hr"><h2>Pengguna & Peran</h2></div><div class="mu">Pengguna baru berstatus Menunggu persetujuan. Pilih Hanya lihat untuk menyetujui warga, atau Admin untuk pengurus. Kembalikan ke Menunggu persetujuan untuk mencabut akses.</div>'+USERS.slice().sort((a,b)=>(b.role==='pending')-(a.role==='pending')).map(u=>'<div class="card row" style="cursor:default"><div><b>'+E(u.nama||u.email)+'</b><div class="mu">'+E(u.email)+'</div></div><select style="width:auto" data-uid="'+u.id+'"'+(u.id===me.id?' disabled':'')+'>'+Object.keys(ROLE).map(r=>'<option value="'+r+'"'+(u.role===r?' selected':'')+'>'+ROLE[r]+'</option>').join('')+'</select></div>').join('')};
+function render(){$('#cn').textContent=CFG.nama||'Nama Cluster';$('#lg').innerHTML=CFG.logo?'<img src="'+E(CFG.logo)+'" alt="">':'🏘️';
+$('#who').textContent=(me.nama||me.email)+' • '+ROLE[me.role];$('#cfgb').style.display=me.role==='superadmin'?'':'none';
+document.querySelectorAll('nav button').forEach(b=>{b.classList.toggle('on',b.dataset.t===tab);if(b.dataset.t==='user'){b.style.display=me.role==='superadmin'?'':'none';const n=USERS.filter(u=>u.role==='pending').length;b.textContent='Pengguna'+(n?' ('+n+')':'')}});$('#v').innerHTML=V[tab]()}
+function toast(m){const t=$('#t');t.textContent=m;t.style.display='block';clearTimeout(toast.h);toast.h=setTimeout(()=>t.style.display='none',2600)}
+const close=()=>$('#m').classList.remove('on'),fld=(l,i)=>'<label>'+l+i+'</label>';
+function cond(f){const j=f.elements.jabatan;if(!j)return;f.querySelectorAll('[data-w]').forEach(l=>{const on=j.value===l.dataset.w;l.style.display=on?'':'none';l.querySelector('input').disabled=!on})}
+function openForm(n,id){const s=S[n],d=id?(D[n].find(x=>x.id===id)||{}):(s.def?s.def():{});
+$('#sh').innerHTML='<h2>'+(id?'Ubah ':'Tambah ')+s.t+'</h2><form data-n="'+n+'" data-id="'+(id||'')+'">'+s.f.map(f=>{const k=f[0],v=d[k]==null?'':d[k],l=f[1]+(f[4]?' *':'');let i;
+if(f[2]==='sel')i='<select name="'+k+'"'+(f[4]?' required':'')+'>'+f[3].map(o=>'<option'+(o===v?' selected':'')+'>'+E(o)+'</option>').join('')+'</select>';
+else if(f[2]==='area')i='<textarea name="'+k+'" rows="3">'+E(v)+'</textarea>';
+else i='<input name="'+k+'" type="'+(f[2]==='blok'?'text':f[2])+'" '+(f[2]==='blok'?'list="dlb" ':'')+(f[2]==='number'?'inputmode="numeric" ':'')+(f[4]?'required ':'')+'value="'+E(v)+'">';
+return '<label'+(f[5]?' data-w="'+f[5]+'"':'')+'>'+l+i+'</label>'}).join('')+'<datalist id="dlb">'+D.warga.map(w=>'<option value="'+E(w.blok)+'">').join('')+'</datalist><div class="mu" style="margin-top:8px">* wajib diisi</div>'+
+'<div class="hr" style="margin-top:12px"><div>'+(id?'<button type="button" class="btn o d" data-a="del">Hapus</button>':'')+'</div><div><button type="button" class="btn o" data-a="cx">Batal</button> <button class="btn">Simpan</button></div></div></form>';
+cond($('#sh form'));$('#m').classList.add('on')}
+async function recs(){let all=[],i=0;for(;;){const r=await sb.rpc('get_recs').range(i,i+999);if(r.error)return r;const x=r.data||[];all=all.concat(x);if(x.length<1000)return{data:all};i+=1000}}
+function wait(){$('#app').style.display='none';$('#auth').style.display='';$('#auth').innerHTML='<div class="card"><h2>Menunggu persetujuan</h2><div class="mu">Akun '+E(me.email)+' sudah terdaftar. Super admin perlu menyetujui dulu sebelum kamu bisa melihat data.</div><p><button class="btn" data-a="re">Periksa lagi</button> <button class="btn o" data-a="out">Keluar</button></p></div>'}
+async function load(){const [a,b,c]=await Promise.all([recs(),sb.from('settings').select('*').eq('id',1).maybeSingle(),me.role==='superadmin'?sb.from('profiles').select('*').order('email'):Promise.resolve({data:[]})]);
+if(a.error)toast(a.error.message);Object.keys(D).forEach(k=>D[k]=[]);(a.data||[]).forEach(r=>D[r.kind]&&D[r.kind].push(Object.assign({id:r.id},r.d)));CFG=b.data||CFG;USERS=c.data||[];render()}
+async function run(p,ok){const r=await p;if(r.error){toast(r.error.message);return false}if(ok)toast(ok);await load();return true}
+async function gen(){const ex=new Set(D.ipl.filter(d=>d.periode===per).map(d=>d.blok)),b=D.warga.filter(w=>!ex.has(w.blok)).map(w=>({kind:'ipl',d:{periode:per,blok:w.blok,nama:w.nama,tagihan:TARIF(),denda:0,dibayar:0}}));
+if(!b.length)return toast('Semua rumah sudah punya tagihan');run(sb.from('rec').insert(b),b.length+' tagihan dibuat')}
+function cfgForm(){$('#sh').innerHTML='<h2>Pengaturan Cluster</h2><form data-n="cfg">'+fld('Nama Cluster','<input name="nama" value="'+E(CFG.nama)+'">')+fld('Logo (gambar)','<input name="logo" type="file" accept="image/*">')+fld('Tarif IPL per bulan (Rp)','<input name="tarif" type="number" value="'+TARIF()+'">')+
+'<div class="hr"><div></div><div><button type="button" class="btn o" data-a="cx">Batal</button> <button class="btn">Simpan</button></div></div></form>';$('#m').classList.add('on')}
+const rd=f=>new Promise(r=>{const i=new Image();i.onload=()=>{const s=Math.min(1,200/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=i.width*s;c.height=i.height*s;c.getContext('2d').drawImage(i,0,0,c.width,c.height);r(c.toDataURL('image/png'))};i.src=URL.createObjectURL(f)});
+async function enter(u){const {data}=await sb.from('profiles').select('*').eq('id',u.id).maybeSingle();U=u;me=data||{id:u.id,email:u.email,role:'pending'};if(me.role==='pending')return wait();ro=!['superadmin','admin'].includes(me.role);$('#auth').style.display='none';$('#app').style.display='';await load()}
+const am=m=>$('#am').textContent=m;
+document.addEventListener('click',async e=>{const t=e.target,c=s=>t.closest(s),x=c('[data-t],[data-add],[data-e],[data-a]');if(!x&&t===$('#m'))return close();if(!x)return;const a=x.dataset.a;
+if(x.dataset.t){tab=x.dataset.t;render()}else if(x.dataset.add)openForm(x.dataset.add);else if(x.dataset.e){if(!ro){const p=x.dataset.e.split('|');openForm(p[0],p[1])}}
+else if(a==='cx')close();else if(a==='gen')gen();else if(a==='cfg')cfgForm();
+else if(a==='re')enter(U);
+else if(a==='out'){await sb.auth.signOut();location.reload()}
+else if(a==='li'||a==='su'){const email=$('#em').value.trim(),password=$('#pw').value;if(!email||password.length<6)return am('Isi email dan kata sandi (min. 6 karakter)');am('Memproses...');
+if(a==='li'){const r=await sb.auth.signInWithPassword({email,password});if(r.error)return am(r.error.message);enter(r.data.user)}
+else{const r=await sb.auth.signUp({email,password,options:{data:{nama:$('#nm').value.trim()}}});if(r.error)return am(r.error.message);r.data.session?enter(r.data.user):am('Pendaftaran berhasil. Cek email untuk konfirmasi, lalu masuk.')}}
+else if(a==='del'){if(!x.dataset.s){x.dataset.s=1;x.textContent='Yakin hapus?'}else{const f=x.closest('form');close();run(sb.from('rec').delete().eq('id',f.dataset.id),'Terhapus')}}});
+document.addEventListener('submit',async e=>{e.preventDefault();const f=e.target,n=f.dataset.n;
+if(n==='cfg'){const o={nama:f.elements.nama.value.trim(),tarif:+f.elements.tarif.value||250000},fl=f.elements.logo.files[0];if(fl)o.logo=await rd(fl);close();return run(sb.from('settings').update(o).eq('id',1),'Tersimpan')}
+const o={};S[n].f.forEach(k=>{const el=f.elements[k[0]];if(el.disabled)return;o[k[0]]=k[2]==='number'?(el.value===''?'':+el.value):el.value.trim()});
+const id=f.dataset.id;close();run(id?sb.from('rec').update({d:o}).eq('id',id):sb.from('rec').insert({kind:n,d:o}),'Tersimpan')});
+document.addEventListener('input',e=>{if(e.target.id==='q'){q=e.target.value;$('#lst').innerHTML=grp()}});
+document.addEventListener('change',e=>{const t=e.target;if(t.id==='per'&&t.value){per=t.value;render()}
+if(t.name==='jabatan')cond(t.form);
+if(t.name==='blok'&&t.form&&t.form.dataset.n==='ipl'){const w=D.warga.find(x=>x.blok===t.value);if(w)t.form.elements.nama.value=w.nama}
+if(t.dataset.uid)run(sb.from('profiles').update({role:t.value}).eq('id',t.dataset.uid),'Peran diubah')});
+(async()=>{$('#auth').style.display='';if(CU.startsWith('ISI_')){am('Isi CU dan CK di bagian atas script pada index.html (lihat PANDUAN.md).');return}
+sb=supabase.createClient(CU,CK);const {data}=await sb.auth.getSession();if(data.session)enter(data.session.user)})();
+</script></body></html>
